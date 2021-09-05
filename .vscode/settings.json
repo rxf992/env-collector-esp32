@@ -1,0 +1,18 @@
+{
+    "files.associations": {
+        "sdkconfig.h": "c",
+        "array": "c",
+        "vector": "c",
+        "xstring": "c",
+        "xutility": "c",
+        "air_sensor.h": "c",
+        "*.cstub": "cpp",
+        "light_sensor.h": "c",
+        "err.h": "c",
+        "i2c.h": "c",
+        "bme280_bmp280_bmp180.h": "c",
+        "noise_sensor.h": "c",
+        "my_iic.h": "c"
+    },
+    "cmake.configureOnOpen": true
+}
