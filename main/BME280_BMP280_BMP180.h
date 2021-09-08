@@ -7,7 +7,8 @@
    CONDITIONS OF ANY KIND, either express or implied.
 */
 
-
+#ifndef __BMP280__
+#define __BMP280__
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -21,6 +22,13 @@
 #include "esp_err.h"
 
 #include "my_iic.h"
+
+typedef struct{
+   float temp;
+   float pressure;
+}ATMOSPHERE_DATA;
+
+extern ATMOSPHERE_DATA atmosphere_data;
 
 #define BMX280_I2C_ADDR 0x76///根据硬件配置修改
 
@@ -66,3 +74,4 @@
 void i2c_task_bme280_bmp280_bmp180(void *arg);
 
 
+#endif

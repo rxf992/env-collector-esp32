@@ -130,6 +130,12 @@ CONFIG_PARTITION_TABLE_MD5=y
 #
 
 #
+# SD Card Example menu
+#
+# CONFIG_EXAMPLE_FORMAT_IF_MOUNT_FAILED is not set
+# end of SD Card Example menu
+
+#
 # WiFi SoftAP Configuration
 #
 CONFIG_ESP_WIFI_SSID="007-ESP32"

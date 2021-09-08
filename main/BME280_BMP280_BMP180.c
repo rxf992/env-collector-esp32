@@ -17,6 +17,8 @@
 
 static const char *TAG = "+AIR-PRESSURE-SENSOR-BMP280+";
 
+ATMOSPHERE_DATA atmosphere_data;
+
 /**
 *   code auto select ic
 *   0->BMP280
@@ -462,12 +464,17 @@ void i2c_task_bme280_bmp280_bmp180(void *arg)
                 press_cal = calibration_P(pres_raw);
                 temp_act = (double)temp_cal / 100.0;
                 press_act = (double)press_cal / 100.0;
-
-                for_print_temp = (int)temp_act;
-                for_print_temp1 = (int)press_act;
-                ESP_LOGI(TAG, "TEMP : %d.%d°C PRESS : %d.%dhPa ",
-                         for_print_temp,(int)((temp_act-for_print_temp)*100),
-                         for_print_temp1, (int)((press_act-for_print_temp1)*100));
+            #if 0
+                // for_print_temp = (int)temp_act;
+                // for_print_temp1 = (int)press_act;
+                // ESP_LOGI(TAG, "TEMP : %d.%d°C PRESS : %d.%dhPa ",
+                //          for_print_temp,(int)((temp_act-for_print_temp)*100),
+                //          for_print_temp1, (int)((press_act-for_print_temp1)*100));
+            #else
+                ESP_LOGI(TAG, "TEMP : %.2f°C PRESS : %.2fhPa ", temp_act,press_act);
+            #endif      
+                atmosphere_data.temp = temp_act;
+                atmosphere_data.pressure = press_act;
 
 
                 if (sensor_type == 1 )   //BME280
@@ -482,7 +489,7 @@ void i2c_task_bme280_bmp280_bmp180(void *arg)
                 {
                     //ESP_LOGI(TAG, " \n");
                 }
-                vTaskDelay(2000 / portTICK_RATE_MS);
+                vTaskDelay(1000 / portTICK_RATE_MS);
             }
 
         }

@@ -29,16 +29,17 @@
 #include "air_sensor.h"
 #include "noise_sensor.h"
 #include "BME280_BMP280_BMP180.h"
+#include "sd_card.h"
 #define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
 
 #define PORT 3333
 
-char payload[2048] = "Incoming Message from ESP32\n";
+// char payload[2048] = "Incoming Message from ESP32\n";
 
 extern AIR_DATA air_data;
 extern float light_sensor_lux;
 extern float noise_sensor_db;
-
+const int g_UDP_REPORT_INTERVAL_MS = 60 * 1000;// every 60 sec 
 static const char *TAG = "+TASK_APP_MAIN+";
 esp_ip4_addr_t broadcast_addr = {0}; //广播地址
 char broadcast_ip_addr[20] = {0};
@@ -68,13 +69,13 @@ static inline char* get_string_address(struct sockaddr_storage *source_addr)
     }
     return address_str;
 }
-static int generate_one_data_line_csv(char* buffer, size_t buffer_size, AIR_DATA air, float noise, float light)
+int generate_one_data_line_csv(char* buffer, size_t buffer_size, AIR_DATA air, float noise, float light, ATMOSPHERE_DATA atmosphere_data)
 {
     // parse to buffer.
     // parse air to buffer.
-    int res = sprintf(buffer, "%d,%d,%d,%d,%d,%d.%d,%d.%d,%f,%f\n", 
-                        air.CH2O, air.CO2, air.TVOC, air.PM25, air.PM10, air.Temp_int, air.Temp_float, air.Hummidity_int, air.Hummidity_float,
-                        noise, light);
+    int res = sprintf(buffer, "%d,%d,%d,%d,%d,%.2f,%d.%d,%.2f,%.2f,%.2f\n", 
+                        air.CH2O, air.CO2, air.TVOC, air.PM25, air.PM10, atmosphere_data.temp, air.Hummidity_int, air.Hummidity_float,
+                        noise, light, atmosphere_data.pressure);
     
     return res;
 }
@@ -110,16 +111,16 @@ static void udp_client_task(void *pvParameters)
         while (1) {
             /// 生成一行新的csv数据
             memset(output_buffer, 0, sizeof(output_buffer));
-            int len = generate_one_data_line_csv(output_buffer, sizeof(output_buffer), air_data, noise_sensor_db, light_sensor_lux);
+            int len = generate_one_data_line_csv(output_buffer, sizeof(output_buffer), air_data, noise_sensor_db, light_sensor_lux, atmosphere_data);
 
             int err = sendto(sock, output_buffer, len, 0, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
             if (err < 0) {
                 ESP_LOGE(TAG, "Error occurred during sending: errno %d", errno);
                 break;
             }
-            ESP_LOGI(TAG, "!!! Message sent !!!");
-
-            vTaskDelay(2000 / portTICK_PERIOD_MS);
+            ESP_LOGI(TAG, "!!! Message sent, len=%d bytes!!", len);
+            ESP_LOGI(TAG,"%s", output_buffer);
+            vTaskDelay(g_UDP_REPORT_INTERVAL_MS / portTICK_PERIOD_MS);
         }
 
         if (sock != -1) {
@@ -250,16 +251,16 @@ void app_main(void)
     ESP_LOGI(TAG, "ESP_WIFI_MODE_AP");
     wifi_init_softap();
 
-
+    xTaskCreate(sd_card_task, "sd_card_task", 4096, NULL, 10, NULL);
     xTaskCreate(light_sensor_task, "i2c_read_BH1750_task", 1024 * 2, (void *)0, 10, NULL);
     xTaskCreate(air_sensor_task, "uart_air_task", ECHO_TASK_STACK_SIZE, NULL, 10, NULL);
     xTaskCreate(noise_sensor_task, "uart_noise_task", ECHO_TASK_STACK_SIZE, NULL, 10, NULL);
     xTaskCreate(i2c_task_bme280_bmp280_bmp180, "i2c_bmp280_task", 2048, NULL, 10, NULL);    
     
-    gpio_setup();
+    // gpio_setup();
     int level = 0;
     while (1) {
-        gpio_set_level(GPIO_OUTPUT_IO_0, level);
+        // gpio_set_level(GPIO_OUTPUT_IO_0, level);//GPIO2 also SD_D2 conflict.
         vTaskDelay(1000 / portTICK_PERIOD_MS);
         level = !level;
     }
