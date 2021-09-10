@@ -25,6 +25,7 @@
 #include "lwip/sockets.h"
 #include <lwip/netdb.h>
 
+#include "my_iic.h"
 #include "light_sensor.h"
 #include "air_sensor.h"
 #include "noise_sensor.h"
@@ -251,10 +252,12 @@ void app_main(void)
     ESP_LOGI(TAG, "ESP_WIFI_MODE_AP");
     wifi_init_softap();
 
-    xTaskCreate(sd_card_task, "sd_card_task", 4096, NULL, 10, NULL);
-    xTaskCreate(light_sensor_task, "i2c_read_BH1750_task", 1024 * 2, (void *)0, 10, NULL);
-    xTaskCreate(air_sensor_task, "uart_air_task", ECHO_TASK_STACK_SIZE, NULL, 10, NULL);
-    xTaskCreate(noise_sensor_task, "uart_noise_task", ECHO_TASK_STACK_SIZE, NULL, 10, NULL);
+    ESP_ERROR_CHECK(i2c_master_init());
+
+    // xTaskCreate(sd_card_task, "sd_card_task", 4096, NULL, 10, NULL);
+    // xTaskCreate(light_sensor_task, "i2c_read_BH1750_task", 1024 * 2, (void *)0, 10, NULL);
+    // xTaskCreate(air_sensor_task, "uart_air_task", ECHO_TASK_STACK_SIZE, NULL, 10, NULL);
+    // xTaskCreate(noise_sensor_task, "uart_noise_task", ECHO_TASK_STACK_SIZE, NULL, 10, NULL);
     xTaskCreate(i2c_task_bme280_bmp280_bmp180, "i2c_bmp280_task", 2048, NULL, 10, NULL);    
     
     // gpio_setup();

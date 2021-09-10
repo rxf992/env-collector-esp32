@@ -27,7 +27,7 @@ ATMOSPHERE_DATA atmosphere_data;
 */
 static uint8_t sensor_type = 0;
 
-static uint8_t bmp180_mode =BMP180_OSS_1TIMES_RATE;
+static uint8_t bmp180_mode = BMP180_OSS_1TIMES_RATE;
 
 static unsigned long int hum_raw, temp_raw, pres_raw;
 static signed long int t_fine;
@@ -130,7 +130,7 @@ static void readTrim(i2c_port_t i2c_num)
 /** @brief init bme(p)280 chip 此处主要是启动芯片和做兼容判断
 *   BME280多了湿度参数，处理数据时需要加上
 */
-static esp_err_t bme280_bmp280_init(i2c_port_t i2c_num, bool need_init_i2c_master)
+static esp_err_t bme280_bmp280_init(i2c_port_t i2c_num)
 {
     uint8_t rbuf;
 
@@ -150,9 +150,9 @@ static esp_err_t bme280_bmp280_init(i2c_port_t i2c_num, bool need_init_i2c_maste
 
     vTaskDelay(100 / portTICK_RATE_MS);
 
-    if(need_init_i2c_master){
-        ESP_ERROR_CHECK(i2c_master_init());
-    }
+    // if(need_init_i2c_master){
+    //     ESP_ERROR_CHECK(i2c_master_init());
+    // }
 
     /* 读芯片ID，做BME280和BMP280的兼容*/
     ESP_ERROR_CHECK(i2c_m_read(i2c_num, BMX280_CHIPID_REG, &rbuf, 1)); //id
@@ -433,7 +433,7 @@ void i2c_task_bme280_bmp280_bmp180(void *arg)
     /* For print flaot data*/
     int32_t for_print_temp,for_print_temp1;
 
-    bme280_bmp280_init(I2C_MASTER_NUM, false);
+    bme280_bmp280_init(I2C_MASTER_NUM);
 
     while(1)
     {

@@ -98,7 +98,7 @@ void light_sensor_task(void *arg)
     int ret;
     uint32_t task_idx = (uint32_t)arg;
     
-    ESP_ERROR_CHECK(i2c_master_init());
+    // ESP_ERROR_CHECK(i2c_master_init());
 
     uint8_t sensor_data_h, sensor_data_l;
     // int cnt = 0;
