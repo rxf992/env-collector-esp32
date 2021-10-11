@@ -12,7 +12,8 @@
         "i2c.h": "c",
         "bme280_bmp280_bmp180.h": "c",
         "noise_sensor.h": "c",
-        "my_iic.h": "c"
+        "my_iic.h": "c",
+        "sd_card.h": "c"
     },
     "cmake.configureOnOpen": true
 }

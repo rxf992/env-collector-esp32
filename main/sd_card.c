@@ -20,27 +20,27 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_system.h"
-#include "air_sensor.h"
 #ifdef CONFIG_IDF_TARGET_ESP32
 #include "driver/sdmmc_host.h"
 #endif
-#include "BME280_BMP280_BMP180.h"
+// #include "BME280_BMP280_BMP180.h"
+#include "air_sensor_1101.h"
 
 static const char *TAG = "+SD-CARD+";
-extern AIR_DATA air_data;
+extern ENV_DATA g_env_data;
 extern float light_sensor_lux;
 extern float noise_sensor_db;
 const int g_SD_CARD_WRITE_INTERVAL_MS = 60 * 1000;// every 60 sec 
-extern ATMOSPHERE_DATA atmosphere_data;
-extern int generate_one_data_line_csv(char* buffer, size_t buffer_size, AIR_DATA air, float noise, float light, ATMOSPHERE_DATA atmosphere_data);
-
+// extern ATMOSPHERE_DATA atmosphere_data;
+extern int generate_one_data_line_csv(char* buffer, size_t buffer_size, ENV_DATA* air);
+#define CONFIG_EXAMPLE_FORMAT_IF_MOUNT_FAILED 1
 char line_buffer[256] = {0};
 
 // This example can use SDMMC and SPI peripherals to communicate with SD card.
 // By default, SDMMC peripheral is used.
 // To enable SPI mode, uncomment the following line:
 #define MOUNT_POINT "/sdcard"
-// #define USE_SPI_MODE
+#define USE_SPI_MODE
 
 // ESP32-S2 and ESP32-C3 doesn't have an SD Host peripheral, always use SPI:
 #if CONFIG_IDF_TARGET_ESP32S2 ||CONFIG_IDF_TARGET_ESP32C3
@@ -187,7 +187,7 @@ void sd_card_task(void *arg)
     {
         // this parse sensor data into data.csv every 1sec.
         vTaskDelay(1000 / portTICK_PERIOD_MS);
-        int len = generate_one_data_line_csv(line_buffer, sizeof(line_buffer), air_data, noise_sensor_db, light_sensor_lux, atmosphere_data);
+        int len = generate_one_data_line_csv(line_buffer, sizeof(line_buffer), &g_env_data);
         // write to 
         if(len > 0)
         {
