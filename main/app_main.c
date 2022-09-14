@@ -30,13 +30,15 @@
 #include "sd_card.h"
 #define LOG_LOCAL_LEVEL ESP_LOG_VERBOSE
 
-
+#define DO_RESET_THRESHOLD          (60*60*24)
 #define ECHO_TASK_STACK_SIZE        (2048)
-
+uint32_t g_running_cnt = 0;
+bool g_running_need_reset_flag = false;
+bool g_repeat_time_reach_threshold = false;
 ENV_DATA g_env_data;
 
 static const char *TAG = "+TASK_APP_MAIN+";
-
+extern volatile bool g_uart_read_fail_flag;
 
 // extern float light_sensor_lux;
 // extern float noise_sensor_db;
@@ -52,8 +54,33 @@ static const char *TAG = "+TASK_APP_MAIN+";
 
 int generate_one_data_line_csv(char* buffer, size_t buffer_size, const ENV_DATA* air)
 {
-    // parse to buffer.
-    // parse air to buffer.
+
+    if (air->Humi ==0 && air->PA == 0){
+        return -1;//invalid data.
+    }
+    #if 1// use PA value to detect if the system needs to be reset.
+    static uint32_t last_PA_value = 0;
+    static int PA_value_repeat_cnt = 0;
+    
+    if(last_PA_value == air->PA)
+    {
+        PA_value_repeat_cnt++;
+    }else{
+        PA_value_repeat_cnt = 0;
+        g_repeat_time_reach_threshold = false;
+    }
+    if(PA_value_repeat_cnt > 30)// repeat for over threshold.
+    {
+        g_repeat_time_reach_threshold = true;// in sdcard thread, will detect this flag and trigger log record and esp_restart.
+    }
+    /* update with new PA value.*/
+    last_PA_value = air->PA;
+    #endif
+
+    /*
+      parse to buffer.
+      parse air to buffer.
+    */
     int res = sprintf(buffer, "%d,%d,%d,%d,%d,%d,%d,%.2f,%.2f,%d\n", \
                         air->CH2O, air->CO2, air->TVOC, air->PM25, \
                         air->PM10, air->LUX, air->dB,   (air->Temp)/100.0, (air->Humi)/100.0, air->PA);
@@ -103,10 +130,22 @@ void app_main(void)
     
     
     // gpio_setup();
-    int level = 0;
+    // int level = 0;
     while (1) {
         // gpio_set_level(GPIO_OUTPUT_IO_0, level);//GPIO2 also SD_D2 conflict.
+        // level = !level;
+        #if 1
         vTaskDelay(1000 / portTICK_PERIOD_MS);
-        level = !level;
+        g_running_cnt++;
+        if (g_running_cnt >= DO_RESET_THRESHOLD)
+        {
+            g_running_need_reset_flag = true;
+        }
+        if (g_uart_read_fail_flag || g_running_need_reset_flag)
+        {
+            ESP_LOGE(TAG, "need to do reset !!!");
+            // esp_restart();
+        }
+        #endif
     }
 }

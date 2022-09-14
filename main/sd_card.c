@@ -25,7 +25,10 @@
 #endif
 // #include "BME280_BMP280_BMP180.h"
 #include "air_sensor_1101.h"
-
+extern bool g_running_need_reset_flag;// used to indicate if rountine reset is required, which could prevent data error.
+extern volatile bool g_uart_read_fail_flag;// used to indicate if uart communication is error and need reset to recover.
+extern uint32_t g_running_cnt;//in app_main thread, which increments every 1 sec.
+extern bool g_repeat_time_reach_threshold;// if generate_one_data_line_csv() receive too much repeat value,will set this flag to true.
 static const char *TAG = "+SD-CARD+";
 extern ENV_DATA g_env_data;
 extern float light_sensor_lux;
@@ -35,7 +38,7 @@ const int g_SD_CARD_WRITE_INTERVAL_MS = 60 * 1000;// every 60 sec
 extern int generate_one_data_line_csv(char* buffer, size_t buffer_size, ENV_DATA* air);
 #define CONFIG_EXAMPLE_FORMAT_IF_MOUNT_FAILED 1
 char line_buffer[256] = {0};
-
+char log_buffer[128] = {0};
 // This example can use SDMMC and SPI peripherals to communicate with SD card.
 // By default, SDMMC peripheral is used.
 // To enable SPI mode, uncomment the following line:
@@ -78,6 +81,8 @@ char line_buffer[256] = {0};
 
 #endif //CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32S2
 #endif //USE_SPI_MODE
+
+
 
 void sd_card_task(void *arg)
 {
@@ -179,15 +184,41 @@ void sd_card_task(void *arg)
         ESP_LOGE(TAG, "Failed to open file for writing");
         return;
     }
-    // fprintf(f, "Hello %s!\n", card->cid.name);
-    // fclose(f);
-    // ESP_LOGI(TAG, "File written");
+
     memset(line_buffer, 0, sizeof(line_buffer));
     while(1)
     {
         // this parse sensor data into data.csv every 1sec.
         vTaskDelay(1000 / portTICK_PERIOD_MS);
+        #if 1
+        if (g_uart_read_fail_flag || g_repeat_time_reach_threshold || g_running_need_reset_flag)
+        {
+            //
+            FILE* f = fopen(MOUNT_POINT"/log.csv", "a+");
+            if (f == NULL) {
+                ESP_LOGE(TAG, "Failed to open file for writing");
+            }else{
+                int str_len = 0;
+                if(g_running_need_reset_flag)
+                {
+                    str_len = sprintf(log_buffer, "%u g_running_need_reset_flag=true, need to do reset.\n", g_running_cnt);
+                }else if(g_uart_read_fail_flag){
+                    str_len = sprintf(log_buffer, "%u g_uart_read_fail_flag=true, need to do reset.\n", g_running_cnt);
+                }else{
+                    // g_repeat_time_reach_threshold
+                    str_len = sprintf(log_buffer, "%u g_repeat_time_reach_threshold=true, need to do reset.\n",g_running_cnt);
+                }
+                
+                fwrite(log_buffer, 1, str_len, f);
+                fclose(f);
+            }
+            ESP_LOGW(TAG, "!!! uart read sensor data failure  threshold reached and need to do reset.");
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            esp_restart();
+        }
+        #endif
         int len = generate_one_data_line_csv(line_buffer, sizeof(line_buffer), &g_env_data);
+
         // write to 
         if(len > 0)
         {
